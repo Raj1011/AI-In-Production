@@ -22,18 +22,18 @@ export default function Home() {
             </SignedOut>
             <SignedIn>
               <div className="flex items-center gap-4">
-                <link
-                  href="/product"
+                <Link 
+                  href="/product" 
                   className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors"
                 >
                   Go to App
-                </link>
+                </Link>
                 <UserButton showName={true} />
               </div>
             </SignedIn>
           </div>
         </nav>
-        
+
         {/* Hero Section */}
         <div className="text-center py-16">
           <h2 className="text-6xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-6">
@@ -101,5 +101,5 @@ export default function Home() {
         </div>
       </div>
     </main>
-  )
+  );
 }

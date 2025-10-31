@@ -16,130 +16,190 @@ function ConsultationForm() {
     const [patientName, setPatientName] = useState('');
     const [visitDate, setVisitDate] = useState<Date | null>(new Date());
     const [notes, setNotes] = useState('');
-    
+
     // Streaming state
     const [output, setOutput] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     async function handleSubmit(e: FormEvent) {
         e.preventDefault();
         setOutput('');
-        setIsLoading(true);
+        setLoading(true);
 
         const jwt = await getToken();
-        if(!jwt) {
-            setOutput('Authentication required!');
-            setIsLoading(false);
+        if (!jwt) {
+            setOutput('Authentication required');
+            setLoading(false);
             return;
         }
 
         const controller = new AbortController();
         let buffer = '';
 
-        await fetchEventSource("/api", {
+        await fetchEventSource('/api', {
             signal: controller.signal,
-            method: "POST",
+            method: 'POST',
             headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${jwt}`
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${jwt}`,
             },
-            body: JSON.stringify({ 
-                patient_namne: patientName, 
-                date_of_visit: visitDate?.toISOString().slice(0,10),
-                notes 
+            body: JSON.stringify({
+                patient_name: patientName,
+                date_of_visit: visitDate?.toISOString().slice(0, 10),
+                notes,
             }),
-            onmessage(event) {
-                buffer += event.data;
+            onmessage(ev) {
+                buffer += ev.data;
                 setOutput(buffer);
             },
-            onclose() {
-                setIsLoading(false);
+            onclose() { 
+                setLoading(false); 
             },
             onerror(err) {
-                console.error("SSE Error:", err);
+                console.error('SSE error:', err);
                 controller.abort();
-                setIsLoading(false);
-            }   
-        })
+                setLoading(false);
+            },
+        });
     }
+
     return (
-        <div className="container mx-auto px-4 py-12 max-w-3xl">
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-8">
+        <div className={`container mx-auto px-4 py-12 ${output ? 'max-w-5xl' : 'max-w-3xl'}`}> 
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-8 text-center">
                 Consultation Notes
             </h1>
-            <form onSubmit={handleSubmit} className="space-y-6 mb-8">
-                <div className="space-y-2">
-                    <label htmlFor="patient" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Patient Name
-                    </label>
-                    <input
-                        id="patient"
-                        type="text"
-                        required
-                        value={patientName}
-                        onChange={(e) => setPatientName(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                        placeholder="Enter patient's full name"
-                    />
+            {output ? (
+                <div className="flex flex-row gap-8 justify-center items-start">
+                    <form 
+                        onSubmit={handleSubmit} 
+                        className="space-y-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 w-2/5 min-w-[320px]"
+                    >
+                        {/* ...existing form fields... */}
+                        <div className="space-y-2">
+                            <label htmlFor="patient" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Patient Name
+                            </label>
+                            <input
+                                id="patient"
+                                type="text"
+                                required
+                                value={patientName}
+                                onChange={(e) => setPatientName(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                placeholder="Enter patient's full name"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Date of Visit
+                            </label>
+                            <DatePicker
+                                id="date"
+                                selected={visitDate}
+                                onChange={(d: Date | null) => setVisitDate(d)}
+                                dateFormat="yyyy-MM-dd"
+                                placeholderText="Select date"
+                                required
+                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Consultation Notes
+                            </label>
+                            <textarea
+                                id="notes"
+                                required
+                                rows={8}
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                placeholder="Enter detailed consultation notes..."
+                            />
+                        </div>
+                        <button 
+                            type="submit" 
+                            disabled={loading}
+                            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
+                        >
+                            {loading ? 'Generating Summary...' : 'Generate Summary'}
+                        </button>
+                    </form>
+                    <section className="bg-gray-50 dark:bg-gray-800 rounded-xl shadow-lg p-8 w-3/5 min-w-[320px]">
+                        <div className="markdown-content prose prose-blue dark:prose-invert max-w-none">
+                            <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                                {output}
+                            </ReactMarkdown>
+                        </div>
+                    </section>
                 </div>
-                <div>
-                    <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Date of Visit
-                    </label>
-                    <DatePicker
-                        id="date"
-                        selected={visitDate}
-                        onChange={(d: Date | null) => setVisitDate(d)}
-                        dateFormat="yyyy-MM-dd"
-                        placeholderText="Select date"
-                        required
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                    />
-                </div>
-                <div>
-                    <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Consultation Notes
-                    </label>
-                    <textarea
-                        id="notes"
-                        required
-                        rows={8}
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                        placeholder="Enter detailed consultation notes..."
-                    />
-                </div>
-                <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
-                >
-                     {isLoading ? 'Generating Summary...' : 'Generate Summary'}
-                </button>
-            </form>
-            {output && (
-                <section className="mt-8 bg-gray-50 dark:bg-gray-800 rounded-xl shadow-lg p-8">
-                    <div className="markdown-content prose prose-blue dark:prose-invert max-w-none">
-                        <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
-                            {output}
-                        </ReactMarkdown>
+            ) : (
+                <form onSubmit={handleSubmit} className="space-y-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+                    {/* ...existing form fields... */}
+                    <div className="space-y-2">
+                        <label htmlFor="patient" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Patient Name
+                        </label>
+                        <input
+                            id="patient"
+                            type="text"
+                            required
+                            value={patientName}
+                            onChange={(e) => setPatientName(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                            placeholder="Enter patient's full name"
+                        />
                     </div>
-                </section>
+                    <div className="space-y-2">
+                        <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Date of Visit
+                        </label>
+                        <DatePicker
+                            id="date"
+                            selected={visitDate}
+                            onChange={(d: Date | null) => setVisitDate(d)}
+                            dateFormat="yyyy-MM-dd"
+                            placeholderText="Select date"
+                            required
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Consultation Notes
+                        </label>
+                        <textarea
+                            id="notes"
+                            required
+                            rows={8}
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                            placeholder="Enter detailed consultation notes..."
+                        />
+                    </div>
+                    <button 
+                        type="submit" 
+                        disabled={loading}
+                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
+                    >
+                        {loading ? 'Generating Summary...' : 'Generate Summary'}
+                    </button>
+                </form>
             )}
         </div>
     );
 }
 
 export default function Product() {
-    return(
+    return (
         <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
             {/* User Menu in Top Right */}
             <div className="absolute top-4 right-4">
                 <UserButton showName={true} />
             </div>
 
-            {/* Subsscription Protection */}
+            {/* Subscription Protection */}
             <Protect
                 plan="premium_subscription"
                 fallback={
@@ -149,7 +209,7 @@ export default function Product() {
                                 Healthcare Professional Plan
                             </h1>
                             <p className="text-gray-600 dark:text-gray-400 text-lg mb-8">
-                                Streamline your patient consultations with AI-powered summaries.
+                                Streamline your patient consultations with AI-powered summaries
                             </p>
                         </header>
                         <div className="max-w-4xl mx-auto">
