@@ -10,7 +10,7 @@ import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { Protect, PricingTable, UserButton } from '@clerk/nextjs';
 
 function ConsultationForm() {
-    const { getToken } = useAuth();
+    const { getToken, signOut } = useAuth();
 
     // Form state
     const [patientName, setPatientName] = useState('');
@@ -26,12 +26,33 @@ function ConsultationForm() {
         setOutput('');
         setLoading(true);
 
-        const jwt = await getToken();
-        if (!jwt) {
-            setOutput('Authentication required');
-            setLoading(false);
-            return;
-        }
+
+            // Session management: get token from localStorage or Clerk
+            let jwt = localStorage.getItem('clerk_jwt');
+            let expiry = localStorage.getItem('clerk_jwt_expiry');
+            const now = Date.now();
+            if (!jwt || !expiry || now > parseInt(expiry)) {
+                jwt = await getToken();
+                if (!jwt) {
+                    setOutput('Authentication required');
+                    setLoading(false);
+                    return;
+                }
+                // Set expiry for 2 hours from now
+                const newExpiry = (now + 2 * 60 * 60 * 1000).toString();
+                localStorage.setItem('clerk_jwt', jwt);
+                localStorage.setItem('clerk_jwt_expiry', newExpiry);
+                expiry = newExpiry;
+            }
+            // If expired, sign out
+            if (now > parseInt(expiry)) {
+                localStorage.removeItem('clerk_jwt');
+                localStorage.removeItem('clerk_jwt_expiry');
+                signOut();
+                setOutput('Session expired. Please sign in again.');
+                setLoading(false);
+                return;
+            }
 
         const controller = new AbortController();
         let buffer = '';
@@ -41,7 +62,7 @@ function ConsultationForm() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${jwt}`,
+                    Authorization: `Bearer ${jwt}`,
             },
             body: JSON.stringify({
                 patient_name: patientName,

@@ -20,9 +20,10 @@ system_prompt = """
 You are provided with notes written by a doctor from a patient's visit.
 Your job is to summarize the visit for the doctor and provide an email.
 Reply with exactly three sections with the headings:
-### Summary of visit for the doctor's records
-### Next steps for the doctor
-### Draft of email to patient in patient-friendly language
+**Summary of visit for the doctor's records**\n\n
+**Next steps for the doctor**\n\n
+**Draft of email to patient in patient-friendly language**\n\n
+For all points in the summary, next steps, and email, format every label followed by a colon (:) in bold. For example, **Assessment:**, **Patient:**, **Treatment prescribed:**, etc.
 """
 
 
